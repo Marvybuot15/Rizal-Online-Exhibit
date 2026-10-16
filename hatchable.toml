@@ -1,5 +1,0 @@
-# Hatchable project manifest. This file marks the folder as a
-# Hatchable project and declares the services it uses.
-# Reference: https://hatchable.com/docs/developers/config
-name = "Rizal in Hong Kong and Macau — Online Exhibit"
-description = "A visual online brochure and digital exhibit exploring José Rizal's experiences in Hong Kong and Macau, including the Hong Kong Protestant Cemetery and the City of Macau and Portuguese Quarter."
