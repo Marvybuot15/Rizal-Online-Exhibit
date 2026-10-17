@@ -46,8 +46,40 @@ const routes={
  cemetery:{title:'Central District to Protestant Cemetery',description:'Compare Central District with the Protestant Cemetery in Happy Valley. The distance shown is straight-line, not a verified walking itinerary.',distance:km(points.clinic.coords,points.cemetery.coords),type:'Local visit',line:cemeteryLine,bounds:[points.clinic.coords,points.cemetery.coords],show:['clinic','cemetery']},
  macau:{title:'Macau historic sites',description:'Two nearby landmarks in Macau’s historic centre: the Ruins of St. Paul’s and Camões Garden and Grotto.',distance:km(points.macau.coords,points.camoes.coords),type:'Local visit',line:macauLine,bounds:[points.macau.coords,points.camoes.coords],show:['macau','camoes']}
 };
-function selectRoute(key){const r=routes[key];Object.keys(routes).forEach(k=>routes[k].line.setStyle({opacity:k===key?0.95:0.12,weight:k===key?4:2}));document.querySelectorAll('.route-choice').forEach(b=>b.classList.toggle('active',b.dataset.route===key));document.getElementById('route-title').textContent=r.title;document.getElementById('route-description').textContent=r.description;document.getElementById('route-distance').textContent=r.distance;document.getElementById('route-type').textContent=r.type;map.fitBounds(r.bounds,{padding:[45,45]});}
+function selectRoute(key){const r=routes[key];Object.keys(routes).forEach(k=>routes[k].line.setStyle({opacity:k===key?0.95:0.12,weight:k===key?4:2}));document.querySelectorAll('.route-choice').forEach(b=>b.classList.toggle('active',b.dataset.route===key));document.getElementById('route-title').textContent=r.title;document.getElementById('route-description').textContent=r.description;document.getElementById('route-distance').textContent=r.distance;document.getElementById('route-type').textContent=r.type;map.fitBounds(r.bounds,{padding:[45,45]});currentKey=key;stopAnim();setTimeout(function(){if(currentKey===key)startAnim(key)},700);}
 document.querySelectorAll('.route-choice').forEach(b=>b.addEventListener('click',()=>selectRoute(b.dataset.route)));
+var currentKey='ferry',anim={raf:null,layer:L.layerGroup().addTo(map)},reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
+function stopAnim(){if(anim.raf)cancelAnimationFrame(anim.raf);anim.raf=null;anim.layer.clearLayers();}
+function startAnim(key){
+ stopAnim();if(reduceMotion)return;
+ var a=routes[key].bounds[0],b=routes[key].bounds[1],t0=null;
+ if(key==='ferry'){
+  var boat=L.marker(a,{icon:L.divIcon({className:'boat-icon',html:'<span>\u26F4\uFE0F</span>',iconSize:[36,36],iconAnchor:[18,18]}),interactive:false,zIndexOffset:1000}).addTo(anim.layer);
+  var dur=7500,pause=900;
+  (function step(ts){
+   if(!t0)t0=ts;var cycle=(dur+pause)*2,x=(ts-t0)%cycle,leg=x<dur+pause?0:1,p=Math.min(1,(x-(leg?dur+pause:0))/dur);
+   var from=leg?b:a,to=leg?a:b,e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+   boat.setLatLng(lerp(from,to,e));
+   var el=boat.getElement();if(el&&el.firstChild)el.firstChild.style.transform='scaleX('+(to[1]<from[1]?-1:1)+') translateY('+(Math.sin(ts/260)*2)+'px)';
+   anim.raf=requestAnimationFrame(step);
+  })(performance.now());
+ }else{
+  var N=9,gap=520,hold=2200,shown=0,pa=map.latLngToLayerPoint(a),pb=map.latLngToLayerPoint(b);
+  var ang=Math.atan2(pb.y-pa.y,pb.x-pa.x),nx=-Math.sin(ang),ny=Math.cos(ang);
+  (function step(ts){
+   if(!t0)t0=ts;var x=(ts-t0)%(N*gap+hold),want=Math.min(N,Math.floor(x/gap)+1);
+   if(x<gap&&shown>0){anim.layer.clearLayers();shown=0;}
+   while(shown<want){
+    var f=(shown+.5)/N,side=shown%2?1:-1,pt=L.point(pa.x+(pb.x-pa.x)*f+nx*7*side,pa.y+(pb.y-pa.y)*f+ny*7*side);
+    L.marker(map.layerPointToLatLng(pt),{icon:L.divIcon({className:'foot-icon',html:'<span style="transform:rotate('+(ang*180/Math.PI+90)+'deg)">\uD83D\uDC63</span>',iconSize:[22,22],iconAnchor:[11,11]}),interactive:false}).addTo(anim.layer);
+    shown++;
+   }
+   anim.raf=requestAnimationFrame(step);
+  })(performance.now());
+ }
+}
+map.on('zoomend',function(){if(!anim.raf&&reduceMotion)return;clearTimeout(window.__rz);window.__rz=setTimeout(function(){startAnim(currentKey)},250);});
 selectRoute('ferry');
 setTimeout(()=>map.invalidateSize(),250);
 })();
