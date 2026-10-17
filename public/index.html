@@ -36,7 +36,8 @@ const map=L.map('rizal-map',{scrollWheelZoom:false}).setView([22.245,113.86],9);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 const colors={hk:'#a83d31',macau:'#334c40'};
 Object.keys(points).forEach(k=>{const p=points[k];const color=k==='clinic'||k==='cemetery'?colors.hk:colors.macau;L.circleMarker(p.coords,{radius:7,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(map).bindPopup('<strong>'+p.name+'</strong><br>'+p.region+'<br><span>'+p.note+'</span>');});
-const ferryLine=L.polyline([points.clinic.coords,points.macau.coords],{color:'#a83d31',weight:3,opacity:.85,dashArray:'6 9',lineCap:'round',className:'route-flow'}).addTo(map);
+const seaPath=[points.clinic.coords,[22.286,114.125],[22.296,114.095],[22.309,114.062],[22.326,114.025],[22.345,113.987],[22.359,113.947],[22.365,113.905],[22.362,113.862],[22.352,113.821],[22.335,113.782],[22.311,113.744],[22.282,113.708],[22.250,113.671],[22.222,113.632],[22.205,113.594],points.macau.coords];
+const ferryLine=L.polyline(seaPath,{color:'#a83d31',weight:3,opacity:.85,dashArray:'6 9',lineCap:'round',className:'route-flow'}).addTo(map);
 const cemeteryLine=L.polyline([points.clinic.coords,points.cemetery.coords],{color:'#a83d31',weight:4,opacity:.9}).addTo(map);
 const macauLine=L.polyline([points.macau.coords,points.camoes.coords],{color:'#334c40',weight:4,opacity:.9}).addTo(map);
 function distance(a,b){const R=6371,rad=x=>x*Math.PI/180;const dLat=rad(b[0]-a[0]),dLon=rad(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
@@ -48,6 +49,8 @@ const routes={
 };
 function selectRoute(key){const r=routes[key];Object.keys(routes).forEach(k=>routes[k].line.setStyle({opacity:k===key?0.95:0.12,weight:k===key?4:2}));document.querySelectorAll('.route-choice').forEach(b=>b.classList.toggle('active',b.dataset.route===key));document.getElementById('route-title').textContent=r.title;document.getElementById('route-description').textContent=r.description;document.getElementById('route-distance').textContent=r.distance;document.getElementById('route-type').textContent=r.type;map.fitBounds(r.bounds,{padding:[45,45]});currentKey=key;stopAnim();setTimeout(function(){if(currentKey===key)startAnim(key)},700);}
 document.querySelectorAll('.route-choice').forEach(b=>b.addEventListener('click',()=>selectRoute(b.dataset.route)));
+var segLen=[],pathTotal=0;for(var si=0;si<seaPath.length-1;si++){var sdx=(seaPath[si+1][1]-seaPath[si][1])*Math.cos(22.27*Math.PI/180),sdy=seaPath[si+1][0]-seaPath[si][0],sd=Math.sqrt(sdx*sdx+sdy*sdy);segLen.push(sd);pathTotal+=sd;}
+function pathAt(t){var d=t*pathTotal,i=0;while(i<segLen.length-1&&d>segLen[i]){d-=segLen[i];i++}var f=segLen[i]?Math.min(1,d/segLen[i]):0;return lerp(seaPath[i],seaPath[i+1],f);}
 var currentKey='ferry',anim={raf:null,layer:L.layerGroup().addTo(map)},reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
 function stopAnim(){if(anim.raf)cancelAnimationFrame(anim.raf);anim.raf=null;anim.layer.clearLayers();}
@@ -59,8 +62,8 @@ function startAnim(key){
   var dur=7500,pause=900;
   (function step(ts){
    if(!t0)t0=ts;var cycle=(dur+pause)*2,x=(ts-t0)%cycle,leg=x<dur+pause?0:1,p=Math.min(1,(x-(leg?dur+pause:0))/dur);
-   var from=leg?b:a,to=leg?a:b,e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
-   boat.setLatLng(lerp(from,to,e));
+   var e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+   boat.setLatLng(pathAt(leg?1-e:e));
    var el=boat.getElement();if(el&&el.firstChild)el.firstChild.style.transform='scaleX('+(to[1]<from[1]?-1:1)+') translateY('+(Math.sin(ts/260)*2)+'px)';
    anim.raf=requestAnimationFrame(step);
   })(performance.now());
