@@ -51,11 +51,13 @@ function selectRoute(key){const r=routes[key];Object.keys(routes).forEach(k=>rou
 document.querySelectorAll('.route-choice').forEach(b=>b.addEventListener('click',()=>selectRoute(b.dataset.route)));
 var segLen=[],pathTotal=0;for(var si=0;si<seaPath.length-1;si++){var sdx=(seaPath[si+1][1]-seaPath[si][1])*Math.cos(22.27*Math.PI/180),sdy=seaPath[si+1][0]-seaPath[si][0],sd=Math.sqrt(sdx*sdx+sdy*sdy);segLen.push(sd);pathTotal+=sd;}
 function pathAt(t){var d=t*pathTotal,i=0;while(i<segLen.length-1&&d>segLen[i]){d-=segLen[i];i++}var f=segLen[i]?Math.min(1,d/segLen[i]):0;return lerp(seaPath[i],seaPath[i+1],f);}
-var currentKey='ferry',anim={raf:null,layer:L.layerGroup().addTo(map)},reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var currentKey='ferry',anim={raf:null,layer:L.layerGroup()},reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
 function stopAnim(){if(anim.raf)cancelAnimationFrame(anim.raf);anim.raf=null;anim.layer.clearLayers();}
 function startAnim(key){
- stopAnim();if(reduceMotion)return;
+ stopAnim();return;
+ /* Route animations intentionally disabled: no footsteps or boat markers. */
+ if(reduceMotion)return;
  var a=routes[key].bounds[0],b=routes[key].bounds[1],t0=null;
  if(key==='ferry'){
   var boat=L.marker(a,{icon:L.divIcon({className:'boat-icon',html:'<span><svg viewBox="0 0 40 40" width="36" height="36"><path d="M5 25h30l-5 8H10z" fill="#a83d31" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><rect x="13" y="16" width="14" height="9" rx="1.5" fill="#fff" stroke="#a83d31" stroke-width="2"/><rect x="18" y="9" width="5" height="7" fill="#334c40" stroke="#fff" stroke-width="1.5"/><path d="M4 37q4-3 8 0t8 0 8 0 8 0" fill="none" stroke="#7fa3b5" stroke-width="2" stroke-linecap="round"/></svg></span>',iconSize:[36,36],iconAnchor:[18,18]}),interactive:false,zIndexOffset:1000}).addTo(anim.layer);
